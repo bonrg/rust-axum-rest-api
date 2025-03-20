@@ -1,3 +1,4 @@
+use crate::entities::user::User;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use validator::Validate;

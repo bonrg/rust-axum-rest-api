@@ -1,3 +1,4 @@
+use crate::entities::task::Task;
 use serde::{Serialize, Deserialize};
 use validator::Validate;
 
@@ -7,7 +8,7 @@ use validator::Validate;
 ///
 /// - `title` — заголовок задачи (обязательное поле, от 3 до 100 символов).
 /// - `description` — описание задачи (необязательное поле, до 500 символов).
-#[derive(Serialize, Deserialize, Validate)]
+#[derive(Clone, Serialize, Deserialize, Validate)]
 pub struct TaskCreateDto {
     #[validate(length(
         min = 3,
@@ -30,10 +31,20 @@ pub struct TaskCreateDto {
 /// - `title` — заголовок задачи.
 /// - `description` — описание задачи (может быть `None`).
 /// - `user_id` — ID пользователя, владельца задачи.
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct TaskReadDto {
     pub id: i32,
     pub title: String,
     pub description: Option<String>,
     pub user_id: i32,
+}
+impl TaskReadDto {
+    pub fn from(model: Task) -> TaskReadDto {
+        Self {
+            id: model.id,
+            title: model.title,
+            description: model.description,
+            user_id: model.user_id,
+        }
+    }
 }
