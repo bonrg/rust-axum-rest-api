@@ -8,5 +8,5 @@ use axum::{routing::post, Router};
 ///
 /// - `POST /auth` — авторизация (логин).
 pub fn routes() -> Router<AuthState> {
-    Router::new().route("/auth", post(auth_handler::auth))
+    Router::new().route("/auth", post(user::auth))
 }

@@ -1,77 +1,79 @@
 use crate::response::api::ApiErrorResponse;
 use async_trait::async_trait;
 use axum::{
-    body::HttpBody,
-    extract::{rejection::JsonRejection, FromRequest},
-    http::Request,
+    extract::{FromRequest, Request, Json},
+    body::Body,
     response::{IntoResponse, Response},
-    BoxError, Json,
+    BoxError,
 };
 use serde::de::DeserializeOwned;
 use thiserror::Error;
 use validator::Validate;
 
-/// Ошибки, возникающие при парсинге и валидации входящего запроса.
+/// Ошибки при парсинге и валидации запроса.
 ///
-/// - `ValidationError` — входные данные прошли JSON-десериализацию, но не прошли валидацию.
-/// - `JsonRejection` — тело запроса содержит некорректный JSON.
+/// - `ValidationError` — JSON-десериализация успешна, но валидация не пройдена.
+/// - `JsonParseError` — тело запроса содержит некорректный JSON.
 #[derive(Debug, Error)]
 pub enum RequestError {
-    #[error(transparent)]
+    #[error("Validation error: {0}")]
     ValidationError(#[from] validator::ValidationErrors),
-    #[error(transparent)]
-    JsonRejection(#[from] JsonRejection),
+
+    #[error("Invalid JSON payload: {0}")]
+    JsonParseError(#[from] axum::extract::rejection::JsonRejection),
 }
 
-/// Специальный обёрточный тип `ValidatedRequest<T>`
+/// Обёртка `ValidatedRequest<T>` — валидируемый JSON-запрос.
 ///
-/// Используется в Axum-хендлерах как extractor с автоматической JSON-десериализацией и валидацией.
+/// Используется как `Json<T>`, но с автоматической валидацией.
 ///
-/// Если валидация не проходит, возвращается ошибка `RequestError::ValidationError`.
-/// Если JSON невалидный — `RequestError::JsonRejection`.
+/// - Если JSON корректен и проходит валидацию, передаётся в handler.
+/// - Если JSON сломан → `JsonParseError` (400 Bad Request).
+/// - Если JSON корректен, но не проходит валидацию → `ValidationError` (422 Unprocessable Entity).
 ///
 /// # Пример использования:
 /// ```rust
 /// async fn handler(ValidatedRequest(dto): ValidatedRequest<MyDto>) { ... }
 /// ```
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug)]
 pub struct ValidatedRequest<T>(pub T);
 
 #[async_trait]
-impl<T, S, B> FromRequest<S, B> for ValidatedRequest<T>
+impl<S, T> FromRequest<S, Body> for ValidatedRequest<T>
 where
-    T: DeserializeOwned + Validate,
     S: Send + Sync,
-    B: HttpBody + Send + 'static,
-    B::Data: Send,
-    B::Error: Into<BoxError>,
+    T: DeserializeOwned + Validate,
 {
-    type Rejection = RequestError;
+    type Rejection = Response;
 
-    /// Извлекает тело запроса и выполняет валидацию структуры `T`.
-    ///
-    /// **<u>:param req</u>**: HTTP-запрос.
-    /// **<u>:param state</u>**: Объект состояния приложения.
-    /// **<u>:return</u>**: Обёртка `ValidatedRequest<T>` при успехе, либо `RequestError` при ошибке.
-    async fn from_request(req: Request<B>, state: &S) -> Result<Self, Self::Rejection> {
-        let Json(value) = Json::<T>::from_request(req, state).await?;
-        value.validate()?;
+    /// Парсинг JSON и валидация структуры `T`.
+    async fn from_request(req: Request<Body>, state: &S) -> Result<Self, Self::Rejection> {
+        // 1. Парсим JSON
+        let Json(value) = Json::<T>::from_request(req, state).await.map_err(|err| {
+            ApiErrorResponse::send(400, Some(format!("Invalid JSON: {}", err)))
+        })?;
+
+        // 2. Проверяем валидацию
+        value.validate().map_err(|err| {
+            ApiErrorResponse::send(422, Some(format!("Validation error: {}", err)))
+        })?;
+
         Ok(ValidatedRequest(value))
     }
 }
 
-/// Реализация конверсии `RequestError` в HTTP-ответ.
+/// Реализация `IntoResponse` для `RequestError`.
 ///
-/// - `ValidationError` → 400 Bad Request + сообщение с деталями.
-/// - `JsonRejection` → 400 Bad Request + сообщение о парсинге JSON.
+/// - `ValidationError` → 422 Unprocessable Entity.
+/// - `JsonParseError` → 400 Bad Request.
 impl IntoResponse for RequestError {
     fn into_response(self) -> Response {
         match self {
-            RequestError::ValidationError(_) => {
-                ApiErrorResponse::send(400, Some(self.to_string().replace('\n', ", ")))
+            RequestError::ValidationError(err) => {
+                ApiErrorResponse::send(422, Some(format!("Validation error: {}", err)))
             }
-            RequestError::JsonRejection(_) => {
-                ApiErrorResponse::send(400, Some(self.to_string()))
+            RequestError::JsonParseError(err) => {
+                ApiErrorResponse::send(400, Some(format!("Invalid JSON: {}", err)))
             }
         }
     }

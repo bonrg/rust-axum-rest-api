@@ -8,6 +8,7 @@ use axum::{
     http::{self, Request},
     middleware::Next,
     response::IntoResponse,
+    body::Body,
 };
 use headers::Authorization;
 use headers::authorization::Bearer;
@@ -25,17 +26,16 @@ use jsonwebtoken::errors::ErrorKind;
 /// - Если пользователь не найден — `UserError::UserNotFound`
 ///
 /// При успешной проверке пользователь добавляется в `Request.extensions()`.
-pub async fn auth<B>(
+pub async fn auth(
     State(state): State<TokenState>,
-    mut req: Request<B>,
+    mut req: Request<Body>,
     next: Next,
 ) -> Result<impl IntoResponse, ApiError> {
-    // Извлечение Authorization-заголовка
     let mut headers = req
         .headers_mut()
         .iter()
         .filter_map(|(name, value)| {
-            if name == http::header::AUTHORIZATION {
+            if name == axum::http::header::AUTHORIZATION {
                 Some(value)
             } else {
                 None

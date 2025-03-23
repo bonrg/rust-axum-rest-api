@@ -25,7 +25,7 @@ use tower_http::trace::TraceLayer;
 ///
 /// :param db_conn: подключение к базе данных
 /// :return: готовый `IntoMakeService` для запуска приложения
-pub fn routes(db_conn: Arc<Database>) -> IntoMakeService<Router> {
+pub fn routes(db_conn: Arc<Database>) -> Router {
     // Инициализация всех состояний
     let auth_state = AuthState::new(&db_conn);
     let user_state = UserState::new(&db_conn);
@@ -48,5 +48,5 @@ pub fn routes(db_conn: Arc<Database>) -> IntoMakeService<Router> {
         .nest("/api", merged_router)
         .layer(TraceLayer::new_for_http());
 
-    app_router.into_make_service()
+    app_router
 }

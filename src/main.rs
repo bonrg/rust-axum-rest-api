@@ -2,7 +2,7 @@ use std::sync::Arc;
 use crate::db::db as other_db;
 use crate::settings::settings as other_settings;
 use crate::db::db::DatabaseTrait;
-use hyper::Server;
+use tokio::net::TcpListener;
 
 mod settings;
 mod db;
@@ -34,10 +34,16 @@ async fn main() {
     tracing_subscriber::fmt::init();
     println!("🚀 Server running on http://{}", host);
 
-    // Запуск сервера Axum
-    Server::bind(&host.parse().unwrap())
-        .serve(routes::root::routes(Arc::new(connection)))
+    let listener = TcpListener::bind(&host)
         .await
-        .unwrap_or_else(|e| panic!("❌ Server error: {}", e));
+        .expect("Failed to bind address");
+
+    // Инициализируем маршруты
+    let app = crate::routes::root::routes(Arc::new(connection));
+
+    // Запускаем сервер с axum::serve
+    axum::serve(listener, app)
+        .await
+        .expect("Server error");
 }
 

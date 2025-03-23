@@ -83,7 +83,7 @@ impl UserService {
             payload.user_name,
             payload.email,
             hashed_password,
-            1i8
+            1i32
         )
             .fetch_one(self.db_conn.get_pool())
             .await?;

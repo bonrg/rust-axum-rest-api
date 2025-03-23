@@ -1,4 +1,4 @@
-use chrono::{DateTime, Utc};
+use chrono::{NaiveDateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 /// Модель пользователя, соответствующая таблице в базе данных.
@@ -22,7 +22,7 @@ pub struct User {
     pub user_name: String,
     pub email: String,
     pub password: String,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: Option<DateTime<Utc>>,
-    pub is_active: i8,
+    pub created_at: NaiveDateTime,
+    pub updated_at: Option<NaiveDateTime>,
+    pub is_active: i32,
 }
