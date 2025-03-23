@@ -5,7 +5,7 @@ use crate::states::user::TokenState;
 
 use axum::{
     extract::State,
-    http::{self, Request},
+    http::{Request},
     middleware::Next,
     response::IntoResponse,
     body::Body,

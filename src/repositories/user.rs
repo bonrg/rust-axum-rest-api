@@ -1,7 +1,7 @@
 use crate::db::db::{Database, DatabaseTrait};
 use crate::entities::user::User;
 use async_trait::async_trait;
-use sqlx::{Error, query_as};
+use sqlx::{Error};
 use std::sync::Arc;
 
 /// Репозиторий пользователей (`UserRepository`).

@@ -1,5 +1,5 @@
 use crate::entities::user::User;
-use chrono::{NaiveDateTime, Utc};
+use chrono::{NaiveDateTime};
 use serde::{Deserialize, Serialize};
 use validator::Validate;
 

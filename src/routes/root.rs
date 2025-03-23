@@ -6,7 +6,7 @@ use crate::states::user::{AuthState, TokenState, UserState};
 
 use axum::{
     middleware,
-    routing::{get, IntoMakeService},
+    routing::{get},
     Router,
 };
 use std::sync::Arc;

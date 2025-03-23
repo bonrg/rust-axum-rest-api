@@ -4,7 +4,6 @@ use axum::{
     extract::{FromRequest, Request, Json},
     body::Body,
     response::{IntoResponse, Response},
-    BoxError,
 };
 use serde::de::DeserializeOwned;
 use thiserror::Error;
